@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/simulator.dir/src/Body.cpp.o CMakeFiles/simulator.dir/src/main.cpp.o CMakeFiles/simulator.dir/src/vector2D.cpp.o -o simulator -F/Library/Frameworks  -Wl,-rpath,/Library/Frameworks /Library/Frameworks/SDL2.framework/Versions/A/SDL2

@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.10)
+project(PlanetSimulatorSDL)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# tes headers
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
+# trouve SDL2 (via SDL2Config.cmake fourni par Homebrew/vcpkg)
+find_package(SDL2 REQUIRED CONFIG)
+
+# sources
+file(GLOB SRC "${CMAKE_SOURCE_DIR}/src/*.cpp")
+
+# exécutable
+add_executable(simulator ${SRC})
+
+# lie SDL2
+target_link_libraries(simulator
+    PRIVATE
+      SDL2::SDL2
+)

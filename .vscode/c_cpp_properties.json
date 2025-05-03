@@ -1,0 +1,26 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "macOS-arm64",
+      "intelliSenseMode": "macos-clang-arm64",
+      "compilerPath": "/usr/bin/clang",
+      "cppStandard": "c++17",
+      "includePath": [
+        "${workspaceFolder}/include",               // tes headers
+        "${workspaceFolder}/src",
+        "/opt/homebrew/opt/sfml/include",           // <— le bon chemin vers SFML
+        "/opt/homebrew/opt/sfml/include/SFML",      // <— parfois nécessaire
+        "${workspaceFolder}/**"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/include",
+          "/opt/homebrew/opt/sfml/include",
+          "/opt/homebrew/opt/sfml/include/SFML"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
+    }
+  ]
+}
