@@ -5,9 +5,9 @@
 #include "Body.hpp"
 #include <string>
 
+// Déclaration de la fonction
+void handleCameraInput(Camera& camera, const Uint8* state);
 
-
-// Trace un cercle rempli de radius r centré en (cx,cy)
 inline void drawFilledCircle(SDL_Renderer* renderer, int cx, int cy, int r) {
     for (int dy = -r; dy <= r; ++dy) {
         for (int dx = -r; dx <= r; ++dx) {
@@ -21,50 +21,57 @@ inline void drawFilledCircle(SDL_Renderer* renderer, int cx, int cy, int r) {
 inline SDL_Point worldToScreen(const vector2D& pos,
     float scale,
     int W, int H,
-    int offsetX, int offsetY)
+    float cameraOffsetX,
+    float cameraOffsetY)
 {
-// 1) Applique le zoom
-float fx = pos.x * scale;
-float fy = - pos.y * scale;
+// Décale par rapport à la caméra (dans le monde)
+float fx = (pos.x - cameraOffsetX) * scale;
+float fy = (pos.y - cameraOffsetY) * scale;
 
-// 2) Centre dans la fenêtre et applique le pan
-//    Note : on inverse l'axe Y pour SDL (y vers le bas)
-float sx = (W / 2.0f) + fx + offsetX;
-float sy = (H / 2.0f) - fy + offsetY;
+// Centre dans la fenêtre (et inverse Y pour SDL)
+float sx = (W / 2.0f) + fx;
+float sy = (H / 2.0f) - fy;
 
-// 3) Arrondi et cast en int
+// Arrondi et cast en int
 return SDL_Point{
 static_cast<int>(std::round(sx)),
 static_cast<int>(std::round(sy))
 };
 }
 
+struct Camera {
+    double offsetX = 0.0;
+    double offsetY = 0.0;
+    double zoom = 1.0;
+};
+
 int main() {
     // ——— Paramètres de simulation ———
     const int   N     = 100;
-    const double dt    = 36000;
+    const double dt    = 360;
     const float  scale = 3*1e-9f;
-    int   offsetX = 0, offsetY = 0;
+
+    Camera camera;
 
     // 1) Création des corps
     Body sun(
         "Sun",
-        vector2D(1.496e11, 1.496e11),
-        vector2D(0.0, -1e3),
+        vector2D(0.0, 0.0),
+        vector2D(0.0, 0.0),
         1.989e30
     );
 
     Body earth(
         "Earth",
-        vector2D(2*1.496e11, 1.496e11),
+        vector2D(1.496e11, 0.0),
         vector2D(0.0, 29.78e3), //29.78e3
         5.972e24
     );
 
     Body moon(
         "Moon",
-        vector2D(2*1.496e11 + 3.84e9, 1.496e11),
-        vector2D(0.0, 29.78e3 + 1.022e3), //29.78e3 m/s
+        vector2D(1.496e11 , 3.84e9),
+        vector2D(-1.022e3, 29.78e3), //29.78e3 m/s
         7.36e22
     );
 
@@ -104,12 +111,18 @@ int main() {
     // ——— Boucle principale ———
     bool running = true;
     SDL_Event e;
+    int i = 0;
+
     while (running) {
+
+        const Uint8* state = SDL_GetKeyboardState(NULL);
         // a) Événements
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT)
                 running = false;
+            handleCameraInput(camera, state);
         }
+        
 
         // b) Simulation physique (N sous-étapes par frame)
         for (int step = 0; step < N; ++step) {
@@ -122,7 +135,11 @@ int main() {
             }
             for (auto& b : bodies) 
                 b.update(dt / N);
-            for (size_t i =0; i<bodies.size(); ++i) trajectoire[i].push_back(bodies[i].position);
+            for (size_t i =0; i<bodies.size(); ++i) {
+                
+                trajectoire[i].push_back(bodies[i].position);
+                if (trajectoire.size() > 100) trajectoire[i].erase(trajectoire[i].begin());
+            }
         }
 
         // c) Rendu
@@ -138,7 +155,7 @@ int main() {
             for (size_t i=0; i<trajectoire.size(); ++i) {
                 auto& traj =trajectoire[i];
                 for (size_t j = 0; j < traj.size(); ++j) {
-                    auto a = worldToScreen(traj[j],scale,H,W,offsetX,offsetY);
+                    auto a = worldToScreen(traj[j],scale,H,W,camera.offsetX,camera.offsetY);
                     SDL_RenderDrawPoint(renderer, a.x, a.y);
                 }
             }
@@ -171,6 +188,7 @@ int main() {
         }
 
         SDL_RenderPresent(renderer);
+
     }
 
     // ——— Cleanup ———
@@ -178,6 +196,34 @@ int main() {
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
+}
+
+// Définition de la fonction
+void handleCameraInput(Camera& camera, const Uint8* state)
+{
+    const double panSpeed = 100.0 / camera.zoom;   // adapté au zoom
+    const double zoomFactor = 1.1;
+
+    // Déplacement au clavier
+    if (state[SDL_SCANCODE_LEFT])  camera.offsetX -= panSpeed;
+    if (state[SDL_SCANCODE_RIGHT]) camera.offsetX += panSpeed;
+    if (state[SDL_SCANCODE_UP])    camera.offsetY += panSpeed;
+    if (state[SDL_SCANCODE_DOWN])  camera.offsetY -= panSpeed;
+
+    // Zoom avec clavier (par exemple + et - du pavé principal)
+    if (state[SDL_SCANCODE_EQUALS] || state[SDL_SCANCODE_KP_PLUS]) {  // touche + ou pavé +
+        camera.zoom *= zoomFactor;
+    }
+    if (state[SDL_SCANCODE_MINUS] || state[SDL_SCANCODE_KP_MINUS]) {  // touche - ou pavé -
+        camera.zoom /= zoomFactor;
+    }
+
+    // Optionnel : reset zoom avec R
+    if (state[SDL_SCANCODE_R]) {
+        camera.zoom = 1.0;
+        camera.offsetX = 0.0;
+        camera.offsetY = 0.0;
+    }
 }
 
 
